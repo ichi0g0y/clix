@@ -55,12 +55,14 @@ then bind a mapping (`<tool> x bind …`) or set a default (`<tool> x use …`).
 
 ## CI is picking the wrong (or no) account
 
-In CI, set the upstream credential directly and clix passes it through
-untouched — it never reads the profile store:
+For flyx, wranglerx, and stripex: set the upstream credential directly in CI and
+the wrapper passes it through untouched — it never reads the profile store.
+**ghx is the exception** — it always resolves from `gh`'s `hosts.yml` and sets
+`GH_TOKEN` itself, so authenticate `gh` rather than relying on a preset token.
 
 | Tool | Set in CI |
 |---|---|
-| ghx | rely on `gh` / `GH_TOKEN` |
+| ghx | run `gh auth login` so `hosts.yml` exists — a preset `GH_TOKEN` is **not** honored |
 | flyx | `FLY_API_TOKEN` |
-| wranglerx | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` |
+| wranglerx | `CLOUDFLARE_API_TOKEN` (+ `CLOUDFLARE_ACCOUNT_ID`) |
 | stripex | `STRIPE_API_KEY` / `STRIPE_SECRET_KEY` (or `--api-key`) |

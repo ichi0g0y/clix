@@ -46,20 +46,31 @@ wranglerx --dry-run deploy
 
 ## Resolution order
 
-1. If `CLOUDFLARE_ACCOUNT_ID` is already set, `wranglerx` passes through to
-   `wrangler` unchanged (CI workflows).
-2. Otherwise it walks up from the current directory and reads top-level
-   `account_id` from the nearest `wrangler.toml` or `wrangler.jsonc`.
-3. If no project account id is found, it tries the GitHub owner from
-   `git remote get-url origin`.
-4. If neither source yields a hit, it falls back to the `default` profile (set
-   via `wranglerx x use <profile>`).
-5. The trigger key is matched against `mappings`, then against each profile's
-   `account_id` / `account_ids`.
+`wranglerx` resolves which account to use in this order — the first match wins:
 
-If the resolved profile's `expiration_time` is past (or within 60 seconds),
-`wranglerx` automatically refreshes the OAuth token using `refresh_token` and
-rewrites `profiles.yml` before invoking `wrangler`.
+1. `CLOUDFLARE_API_TOKEN` set in the environment → pass through to `wrangler`
+   unchanged (CI workflows). A `--account-id <id>` flag, if present, is still
+   replayed as `CLOUDFLARE_ACCOUNT_ID`.
+2. `wranglerx --profile <name>` → use that saved profile's token directly
+   (refresh-aware). The account id is taken from a `--account-id` flag if given,
+   otherwise the profile's primary `account_id`, otherwise whatever `wrangler`
+   resolves on its own.
+3. A bare `CLOUDFLARE_ACCOUNT_ID` in the environment (without `--profile` /
+   `--account-id`) → pass through unchanged.
+4. `--account-id <id>` flag → that account id is the trigger (overrides any
+   `wrangler.toml`).
+5. `account_id` from the nearest `wrangler.toml` (walked up from the current
+   directory).
+6. `account_id` from the nearest `wrangler.jsonc` (walked up from the current
+   directory).
+7. GitHub owner from `git remote get-url origin`.
+8. The `default` profile (set via `wranglerx x use <profile>`).
+
+The resolved trigger key is matched against `mappings`, then against each
+profile's `account_id` / `account_ids`. If the chosen profile's
+`expiration_time` is past (or within 60 seconds), `wranglerx` automatically
+refreshes the OAuth token using `refresh_token` and rewrites `profiles.yml`
+before invoking `wrangler`.
 
 ## Profile management
 

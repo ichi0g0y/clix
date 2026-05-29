@@ -32,8 +32,11 @@ See [Profiles and mappings](concepts/profiles.md) for details.
 
 ## Is clix safe to use in CI?
 
-Yes. If the upstream credential env var is already set, clix passes the command
-through untouched and never reads the profile store. See the CI table in
+Yes. For flyx, wranglerx, and stripex: if the upstream credential env var is
+already set, the wrapper passes the command through untouched and never reads
+the profile store. **ghx is the exception** — it always resolves the account
+from `gh`'s `hosts.yml` (and overrides `GH_TOKEN`), so in CI authenticate `gh`
+rather than relying on a preset `GH_TOKEN`. See the CI table in
 [Troubleshooting](troubleshooting.md).
 
 ## What is the version banner / update notice?
