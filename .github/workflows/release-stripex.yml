@@ -1,9 +1,9 @@
-name: Release flyx
+name: Release stripex
 
 on:
   push:
     tags:
-      - "flyx-v*"
+      - "stripex-v*"
   workflow_dispatch:
 
 permissions:
@@ -50,40 +50,40 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           case "$TAG" in
-            flyx-v*) ;;
+            stripex-v*) ;;
             *)
-              echo "::error::Release requires a 'flyx-v*' tag ref (got '$TAG'). Re-run the workflow from a flyx-v* tag, not a branch." >&2
+              echo "::error::Release requires a 'stripex-v*' tag ref (got '$TAG'). Re-run the workflow from a stripex-v* tag, not a branch." >&2
               exit 1
               ;;
           esac
-          VERSION="${TAG#flyx-v}"
+          VERSION="${TAG#stripex-v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.cross && 'aarch64-linux-gnu-gcc' || '' }}
-        run: cargo build --release -p flyx --target ${{ matrix.target }}
+        run: cargo build --release -p stripex --target ${{ matrix.target }}
 
       - name: Package (Unix)
         if: runner.os != 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf ../../../flyx-v${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz flyx
+          tar czf ../../../stripex-v${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz stripex
           cd ../../..
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
           cd target/${{ matrix.target }}/release
-          7z a ../../../flyx-v${{ steps.version.outputs.version }}-${{ matrix.target }}.zip flyx.exe
+          7z a ../../../stripex-v${{ steps.version.outputs.version }}-${{ matrix.target }}.zip stripex.exe
           cd ../../..
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flyx-${{ matrix.target }}
-          path: flyx-v${{ steps.version.outputs.version }}-${{ matrix.target }}.*
+          name: stripex-${{ matrix.target }}
+          path: stripex-v${{ steps.version.outputs.version }}-${{ matrix.target }}.*
 
   release:
     name: Create Release
@@ -97,13 +97,13 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           case "$TAG" in
-            flyx-v*) ;;
+            stripex-v*) ;;
             *)
-              echo "::error::Release requires a 'flyx-v*' tag ref (got '$TAG'). Re-run the workflow from a flyx-v* tag, not a branch." >&2
+              echo "::error::Release requires a 'stripex-v*' tag ref (got '$TAG'). Re-run the workflow from a stripex-v* tag, not a branch." >&2
               exit 1
               ;;
           esac
-          VERSION="${TAG#flyx-v}"
+          VERSION="${TAG#stripex-v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -122,15 +122,15 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           cd artifacts
-          for f in flyx-v*; do
+          for f in stripex-v*; do
             sha256sum "$f"
           done | tee ../checksums.txt
 
-          echo "sha_macos_arm=$(sha256sum flyx-v${VERSION}-aarch64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "sha_macos_x86=$(sha256sum flyx-v${VERSION}-x86_64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "sha_linux_arm=$(sha256sum flyx-v${VERSION}-aarch64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "sha_linux_x86=$(sha256sum flyx-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "sha_windows_x86=$(sha256sum flyx-v${VERSION}-x86_64-pc-windows-msvc.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_macos_arm=$(sha256sum stripex-v${VERSION}-aarch64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_macos_x86=$(sha256sum stripex-v${VERSION}-x86_64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_linux_arm=$(sha256sum stripex-v${VERSION}-aarch64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_linux_x86=$(sha256sum stripex-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_windows_x86=$(sha256sum stripex-v${VERSION}-x86_64-pc-windows-msvc.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -161,8 +161,8 @@ jobs:
           mkdir -p Formula
 
           printf '%s\n' \
-            'class Flyx < Formula' \
-            '  desc "Multi-account Fly.io CLI wrapper, powered by fly"' \
+            'class Stripex < Formula' \
+            '  desc "Multi-project Stripe CLI, powered by stripe"' \
             '  homepage "https://github.com/nantokaworks/clix"' \
             '  license "MIT"' \
             '' \
@@ -173,44 +173,44 @@ jobs:
             '' \
             '  on_macos do' \
             '    on_arm do' \
-            "      url \"${BASE_URL}/flyx-v${VERSION}-aarch64-apple-darwin.tar.gz\"" \
+            "      url \"${BASE_URL}/stripex-v${VERSION}-aarch64-apple-darwin.tar.gz\"" \
             "      sha256 \"${SHA_MACOS_ARM}\"" \
             '    end' \
             '    on_intel do' \
-            "      url \"${BASE_URL}/flyx-v${VERSION}-x86_64-apple-darwin.tar.gz\"" \
+            "      url \"${BASE_URL}/stripex-v${VERSION}-x86_64-apple-darwin.tar.gz\"" \
             "      sha256 \"${SHA_MACOS_X86}\"" \
             '    end' \
             '  end' \
             '' \
             '  on_linux do' \
             '    on_arm do' \
-            "      url \"${BASE_URL}/flyx-v${VERSION}-aarch64-unknown-linux-gnu.tar.gz\"" \
+            "      url \"${BASE_URL}/stripex-v${VERSION}-aarch64-unknown-linux-gnu.tar.gz\"" \
             "      sha256 \"${SHA_LINUX_ARM}\"" \
             '    end' \
             '    on_intel do' \
-            "      url \"${BASE_URL}/flyx-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz\"" \
+            "      url \"${BASE_URL}/stripex-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz\"" \
             "      sha256 \"${SHA_LINUX_X86}\"" \
             '    end' \
             '  end' \
             '' \
             '  def install' \
-            '    bin.install "flyx"' \
+            '    bin.install "stripex"' \
             '  end' \
             '' \
             '  test do' \
-            '    assert_match version.to_s, shell_output("#{bin}/flyx version 2>&1")' \
+            '    assert_match version.to_s, shell_output("#{bin}/stripex version 2>&1")' \
             '  end' \
-            'end' > Formula/flyx.rb
+            'end' > Formula/stripex.rb
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/flyx.rb
+          git add Formula/stripex.rb
           if git diff --cached --quiet; then
             echo "No formula changes"
             exit 0
           fi
 
-          git commit -m "flyx ${VERSION}"
+          git commit -m "stripex ${VERSION}"
 
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin main
