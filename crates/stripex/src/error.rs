@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use clix_core::git::GitError;
 
 #[derive(Debug)]
+#[allow(dead_code, clippy::enum_variant_names)]
 pub enum Error {
     ConfigDirUnavailable,
     ConfigParseError { path: PathBuf, msg: String },

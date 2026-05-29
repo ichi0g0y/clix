@@ -1,6 +1,7 @@
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct ParsedArgs {
     pub explicit_project: Option<String>,
+    pub project_flag_present: bool,
     pub api_key_present: bool,
     pub dry_run: bool,
     pub raw: Vec<String>,
@@ -19,6 +20,7 @@ pub fn parse(args: &[String]) -> ParsedArgs {
         }
 
         if let Some(value) = strip_flag(a, &["-p", "--project-name"]) {
+            out.project_flag_present = true;
             out.raw.push(a.clone());
             if value.is_empty() && (a == "-p" || a == "--project-name") {
                 if let Some(next) = args.get(i + 1) {
@@ -37,12 +39,13 @@ pub fn parse(args: &[String]) -> ParsedArgs {
         if let Some(value) = strip_flag(a, &["--api-key"]) {
             out.api_key_present = true;
             out.raw.push(a.clone());
-            if value.is_empty() && a == "--api-key" {
-                if let Some(next) = args.get(i + 1) {
-                    out.raw.push(next.clone());
-                    i += 2;
-                    continue;
-                }
+            if value.is_empty()
+                && a == "--api-key"
+                && let Some(next) = args.get(i + 1)
+            {
+                out.raw.push(next.clone());
+                i += 2;
+                continue;
             }
             i += 1;
             continue;
@@ -59,10 +62,10 @@ fn strip_flag<'a>(arg: &'a str, flags: &[&str]) -> Option<&'a str> {
         if arg == flag {
             return Some("");
         }
-        if let Some(rest) = arg.strip_prefix(flag) {
-            if let Some(value) = rest.strip_prefix('=') {
-                return Some(value);
-            }
+        if let Some(rest) = arg.strip_prefix(flag)
+            && let Some(value) = rest.strip_prefix('=')
+        {
+            return Some(value);
         }
     }
     None
@@ -80,6 +83,7 @@ mod tests {
     fn project_short_form_is_detected_and_forwarded() {
         let p = parse(&args(&["-p", "foo", "customers", "list"]));
 
+        assert!(p.project_flag_present);
         assert_eq!(p.explicit_project.as_deref(), Some("foo"));
         assert_eq!(p.raw, args(&["-p", "foo", "customers", "list"]));
     }
@@ -88,6 +92,7 @@ mod tests {
     fn project_long_form_is_detected_and_forwarded() {
         let p = parse(&args(&["--project-name", "foo", "customers", "list"]));
 
+        assert!(p.project_flag_present);
         assert_eq!(p.explicit_project.as_deref(), Some("foo"));
         assert_eq!(p.raw, args(&["--project-name", "foo", "customers", "list"]));
     }
@@ -96,6 +101,7 @@ mod tests {
     fn project_short_equals_form_is_detected_and_forwarded() {
         let p = parse(&args(&["-p=foo", "customers", "list"]));
 
+        assert!(p.project_flag_present);
         assert_eq!(p.explicit_project.as_deref(), Some("foo"));
         assert_eq!(p.raw, args(&["-p=foo", "customers", "list"]));
     }
@@ -104,6 +110,7 @@ mod tests {
     fn project_long_equals_form_is_detected_and_forwarded() {
         let p = parse(&args(&["--project-name=foo", "customers", "list"]));
 
+        assert!(p.project_flag_present);
         assert_eq!(p.explicit_project.as_deref(), Some("foo"));
         assert_eq!(p.raw, args(&["--project-name=foo", "customers", "list"]));
     }
@@ -168,7 +175,17 @@ mod tests {
     fn bare_trailing_project_flag_is_forwarded_without_value() {
         let p = parse(&args(&["customers", "list", "-p"]));
 
+        assert!(p.project_flag_present);
         assert!(p.explicit_project.is_none());
         assert_eq!(p.raw, args(&["customers", "list", "-p"]));
+    }
+
+    #[test]
+    fn bare_project_flag_alone_suppresses_injection_and_is_forwarded() {
+        let p = parse(&args(&["-p"]));
+
+        assert!(p.project_flag_present);
+        assert!(p.explicit_project.is_none());
+        assert_eq!(p.raw, args(&["-p"]));
     }
 }

@@ -5,6 +5,7 @@ use clix_core::git;
 use crate::args::ParsedArgs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum TriggerSource {
     ExplicitProject,
     EnvApiKey,
@@ -23,10 +24,14 @@ pub fn has_stripe_env_key() -> bool {
     stripe_env_key().is_some()
 }
 
-pub fn stripe_env_key() -> Option<(&'static str, String)> {
-    env_value("STRIPE_API_KEY")
-        .map(|value| ("STRIPE_API_KEY", value))
-        .or_else(|| env_value("STRIPE_SECRET_KEY").map(|value| ("STRIPE_SECRET_KEY", value)))
+pub fn stripe_env_key() -> Option<&'static str> {
+    if env_key_present("STRIPE_API_KEY") {
+        Some("STRIPE_API_KEY")
+    } else if env_key_present("STRIPE_SECRET_KEY") {
+        Some("STRIPE_SECRET_KEY")
+    } else {
+        None
+    }
 }
 
 pub fn resolve_project_name(
@@ -44,13 +49,17 @@ pub fn resolve_project_name(
 pub fn print_dry_run(parsed: &ParsedArgs) -> Result<(), crate::error::Error> {
     eprintln!("stripex dry-run:");
 
-    if let Some(project) = parsed.explicit_project.as_deref() {
-        eprintln!("  action: pass through unchanged (you passed -p {project})");
+    if parsed.project_flag_present {
+        if let Some(project) = parsed.explicit_project.as_deref() {
+            eprintln!("  action: pass through unchanged (you passed -p {project})");
+        } else {
+            eprintln!("  action: pass through unchanged (you passed -p/--project-name)");
+        }
         return Ok(());
     }
 
     if has_stripe_env_key() || parsed.api_key_present {
-        if let Some((name, _)) = stripe_env_key() {
+        if let Some(name) = stripe_env_key() {
             eprintln!("  action: pass through unchanged (explicit API key via env:{name})");
         } else {
             eprintln!("  action: pass through unchanged (explicit API key via --api-key)");
@@ -71,8 +80,8 @@ pub fn print_dry_run(parsed: &ParsedArgs) -> Result<(), crate::error::Error> {
     Ok(())
 }
 
-fn env_value(name: &'static str) -> Option<String> {
-    env::var(name).ok().filter(|value| !value.is_empty())
+fn env_key_present(name: &'static str) -> bool {
+    env::var_os(name).is_some_and(|value| !value.is_empty())
 }
 
 fn trigger_label(trigger: &str) -> &str {
@@ -112,10 +121,7 @@ mod tests {
         }
 
         assert!(has_stripe_env_key());
-        assert_eq!(
-            stripe_env_key(),
-            Some(("STRIPE_API_KEY", "sk_test".to_string()))
-        );
+        assert_eq!(stripe_env_key(), Some("STRIPE_API_KEY"));
     }
 
     #[test]
@@ -129,10 +135,7 @@ mod tests {
         }
 
         assert!(has_stripe_env_key());
-        assert_eq!(
-            stripe_env_key(),
-            Some(("STRIPE_SECRET_KEY", "sk_secret".to_string()))
-        );
+        assert_eq!(stripe_env_key(), Some("STRIPE_SECRET_KEY"));
     }
 
     #[test]
@@ -146,10 +149,7 @@ mod tests {
             env::set_var("STRIPE_SECRET_KEY", "sk_secret");
         }
 
-        assert_eq!(
-            stripe_env_key(),
-            Some(("STRIPE_API_KEY", "sk_api".to_string()))
-        );
+        assert_eq!(stripe_env_key(), Some("STRIPE_API_KEY"));
     }
 
     #[test]

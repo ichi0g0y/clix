@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
@@ -11,8 +12,8 @@ pub(crate) static ENV_LOCK: Mutex<()> = Mutex::new(());
 pub(crate) struct EnvGuard {
     _lock: MutexGuard<'static, ()>,
     old_xdg: Option<String>,
-    restore_api_key: Option<Option<String>>,
-    restore_secret_key: Option<Option<String>>,
+    restore_api_key: Option<Option<OsString>>,
+    restore_secret_key: Option<Option<OsString>>,
     old_cwd: Option<std::path::PathBuf>,
 }
 
@@ -26,8 +27,8 @@ impl EnvGuard {
     pub fn set_xdg(xdg_config_home: &Path) -> Self {
         let lock = Self::acquire();
         let old_xdg = std::env::var("XDG_CONFIG_HOME").ok();
-        let old_api_key = std::env::var("STRIPE_API_KEY").ok();
-        let old_secret_key = std::env::var("STRIPE_SECRET_KEY").ok();
+        let old_api_key = std::env::var_os("STRIPE_API_KEY");
+        let old_secret_key = std::env::var_os("STRIPE_SECRET_KEY");
         let old_cwd = std::env::current_dir().ok();
 
         unsafe {
@@ -49,8 +50,8 @@ impl EnvGuard {
     pub fn isolated(xdg_config_home: &Path, cwd: &Path) -> Self {
         let lock = Self::acquire();
         let old_xdg = std::env::var("XDG_CONFIG_HOME").ok();
-        let old_api_key = std::env::var("STRIPE_API_KEY").ok();
-        let old_secret_key = std::env::var("STRIPE_SECRET_KEY").ok();
+        let old_api_key = std::env::var_os("STRIPE_API_KEY");
+        let old_secret_key = std::env::var_os("STRIPE_SECRET_KEY");
         let old_cwd = std::env::current_dir().ok();
 
         unsafe {

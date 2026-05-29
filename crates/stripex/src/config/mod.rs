@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use crate::error::Error;
 
+pub mod stripe_config;
+
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ProjectsConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -72,10 +74,10 @@ pub fn pick_project(
     trigger: &str,
     is_default_source: bool,
 ) -> Option<String> {
-    if let Some(project) = cfg.mappings.get(trigger) {
-        if !project.is_empty() {
-            return Some(project.clone());
-        }
+    if let Some(project) = cfg.mappings.get(trigger)
+        && !project.is_empty()
+    {
+        return Some(project.clone());
     }
 
     if is_default_source {
