@@ -31,110 +31,39 @@ tasks:
     cmds:
       - cargo run -p flyx -- {{.CLI_ARGS}}
 
-  release:ghx:
-    desc: origin/main を検証して ghx-v$VERSION タグを作成して push
-    vars:
-      VERSION:
-        sh: git fetch origin main >/dev/null 2>&1 && git show FETCH_HEAD:crates/ghx/Cargo.toml | grep '^version' | head -1 | sed 's/.*"\(.*\)".*/\1/'
-    preconditions:
-      - sh: 'test -z "$(git ls-remote --tags origin refs/tags/ghx-v{{.VERSION}} 2>/dev/null)"'
-        msg: リモートに同名タグが既に存在します
+  # Release every tool whose origin/main version is not yet tagged on origin
+  # (already-released versions are skipped). Forwards flags, e.g.
+  #   task release -- --dry-run    # show what would be released, no side effects
+  release:
+    desc: リリース可能な全ツール (origin/main で未タグのもの) をローカルでまとめてリリース
     cmds:
-      - |
-        set -eu
-        tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/ghx-release.XXXXXX")"
-        cleanup() {
-          git worktree remove --force "$tmpdir" >/dev/null 2>&1 || true
-          rm -rf "$tmpdir"
-        }
-        trap cleanup EXIT
+      - bash scripts/release-all.sh {{.CLI_ARGS}}
 
-        git fetch origin main
-        git worktree add --detach "$tmpdir" origin/main >/dev/null
-        (
-          cd "$tmpdir"
-          cargo test -p ghx
-        )
-        git tag -f "ghx-v{{.VERSION}}" origin/main
-        git push origin "ghx-v{{.VERSION}}"
+  # Per-CLI local release pipeline. Delegates to scripts/release.sh
+  # (preflight→check→build→package→tag→publish→verify). No CI: builds, packages,
+  # and publishes (GitHub Release + Homebrew tap) entirely on this machine.
+  # Pass through flags with `--`, e.g.:
+  #   task release:ghx -- --dry-run        # rehearse, no side effects
+  #   task release:ghx -- --to=build       # build all targets, stop
+  #   task release:ghx -- --from=publish   # resume upload from existing dist/
+  # Requires Docker running (cross) and gh auth with contents:write on
+  # nantokaworks/clix and nantokaworks/homebrew-tap. See RELEASING.md.
+  release:ghx:
+    desc: ghx をローカルでビルドしてリリース (build→package→tag→publish→verify、CIなし)
+    cmds:
+      - bash scripts/release.sh ghx {{.CLI_ARGS}}
 
   release:wranglerx:
-    desc: origin/main を検証して wranglerx-v$VERSION タグを作成して push
-    vars:
-      VERSION:
-        sh: git fetch origin main >/dev/null 2>&1 && git show FETCH_HEAD:crates/wranglerx/Cargo.toml | grep '^version' | head -1 | sed 's/.*"\(.*\)".*/\1/'
-    preconditions:
-      - sh: 'test -z "$(git ls-remote --tags origin refs/tags/wranglerx-v{{.VERSION}} 2>/dev/null)"'
-        msg: リモートに同名タグが既に存在します
+    desc: wranglerx をローカルでビルドしてリリース (build→package→tag→publish→verify、CIなし)
     cmds:
-      - |
-        set -eu
-        tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/wranglerx-release.XXXXXX")"
-        cleanup() {
-          git worktree remove --force "$tmpdir" >/dev/null 2>&1 || true
-          rm -rf "$tmpdir"
-        }
-        trap cleanup EXIT
-
-        git fetch origin main
-        git worktree add --detach "$tmpdir" origin/main >/dev/null
-        (
-          cd "$tmpdir"
-          cargo test -p wranglerx
-        )
-        git tag -f "wranglerx-v{{.VERSION}}" origin/main
-        git push origin "wranglerx-v{{.VERSION}}"
+      - bash scripts/release.sh wranglerx {{.CLI_ARGS}}
 
   release:stripex:
-    desc: origin/main を検証して stripex-v$VERSION タグを作成して push
-    vars:
-      VERSION:
-        sh: git fetch origin main >/dev/null 2>&1 && git show FETCH_HEAD:crates/stripex/Cargo.toml | grep '^version' | head -1 | sed 's/.*"\(.*\)".*/\1/'
-    preconditions:
-      - sh: 'test -z "$(git ls-remote --tags origin refs/tags/stripex-v{{.VERSION}} 2>/dev/null)"'
-        msg: リモートに同名タグが既に存在します
+    desc: stripex をローカルでビルドしてリリース (build→package→tag→publish→verify、CIなし)
     cmds:
-      - |
-        set -eu
-        tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/stripex-release.XXXXXX")"
-        cleanup() {
-          git worktree remove --force "$tmpdir" >/dev/null 2>&1 || true
-          rm -rf "$tmpdir"
-        }
-        trap cleanup EXIT
-
-        git fetch origin main
-        git worktree add --detach "$tmpdir" origin/main >/dev/null
-        (
-          cd "$tmpdir"
-          cargo test -p stripex
-        )
-        git tag -f "stripex-v{{.VERSION}}" origin/main
-        git push origin "stripex-v{{.VERSION}}"
+      - bash scripts/release.sh stripex {{.CLI_ARGS}}
 
   release:flyx:
-    desc: origin/main を検証して flyx-v$VERSION タグを作成して push
-    vars:
-      VERSION:
-        sh: git fetch origin main >/dev/null 2>&1 && git show FETCH_HEAD:crates/flyx/Cargo.toml | grep '^version' | head -1 | sed 's/.*"\(.*\)".*/\1/'
-    preconditions:
-      - sh: 'test -z "$(git ls-remote --tags origin refs/tags/flyx-v{{.VERSION}} 2>/dev/null)"'
-        msg: リモートに同名タグが既に存在します
+    desc: flyx をローカルでビルドしてリリース (build→package→tag→publish→verify、CIなし)
     cmds:
-      - |
-        set -eu
-        tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/flyx-release.XXXXXX")"
-        cleanup() {
-          git worktree remove --force "$tmpdir" >/dev/null 2>&1 || true
-          rm -rf "$tmpdir"
-        }
-        trap cleanup EXIT
-
-        git fetch origin main
-        git worktree add --detach "$tmpdir" origin/main >/dev/null
-        (
-          cd "$tmpdir"
-          cargo test -p flyx
-        )
-        git tag -f "flyx-v{{.VERSION}}" origin/main
-        git push origin "flyx-v{{.VERSION}}"
+      - bash scripts/release.sh flyx {{.CLI_ARGS}}

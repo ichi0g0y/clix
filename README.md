@@ -72,6 +72,11 @@ The `brew install nantokaworks/tap/<tool>` formulae and the `cargo install --git
 cargo build --release --workspace
 ```
 
+## Release
+
+Releases are built and published locally (no CI) with `task release:<tool>`.
+See [RELEASING.md](RELEASING.md) for prerequisites and the full workflow.
+
 ## License
 
 MIT

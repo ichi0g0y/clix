@@ -1,8 +1,9 @@
 name: Auto-tag CLI releases
 
+# Disabled on push: per-CLI tags are now created locally by scripts/release.sh
+# (`task release:<tool>`). Kept as a manual-only fallback (e.g. to backfill a
+# tag for a version already merged to main).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
