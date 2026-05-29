@@ -1,0 +1,210 @@
+name: Release stripex
+
+on:
+  push:
+    tags:
+      - "stripex-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            runner: macos-15
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            cross: true
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        if: matrix.cross
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Compute version
+        id: version
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#stripex-v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.cross && 'aarch64-linux-gnu-gcc' || '' }}
+        run: cargo build --release -p stripex --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../stripex-v${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz stripex
+          cd ../../..
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a ../../../stripex-v${{ steps.version.outputs.version }}-${{ matrix.target }}.zip stripex.exe
+          cd ../../..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stripex-${{ matrix.target }}
+          path: stripex-v${{ steps.version.outputs.version }}-${{ matrix.target }}.*
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute version
+        id: version
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#stripex-v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Compute SHA256
+        id: sha
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cd artifacts
+          for f in stripex-v*; do
+            sha256sum "$f"
+          done | tee ../checksums.txt
+
+          echo "sha_macos_arm=$(sha256sum stripex-v${VERSION}-aarch64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_macos_x86=$(sha256sum stripex-v${VERSION}-x86_64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_linux_arm=$(sha256sum stripex-v${VERSION}-aarch64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_linux_x86=$(sha256sum stripex-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_windows_x86=$(sha256sum stripex-v${VERSION}-x86_64-pc-windows-msvc.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/*
+            checksums.txt
+
+      - name: Update Homebrew formula
+        # HOMEBREW_TAP_TOKEN minimum scopes (fine-grained PAT on nantokaworks/homebrew-tap):
+        #   Contents:      Read & Write   (clone + push to main)
+        #   Metadata:      Read           (default)
+        #   Pull requests: No access      (direct-push flow; PR scope not needed)
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA_MACOS_ARM: ${{ steps.sha.outputs.sha_macos_arm }}
+          SHA_MACOS_X86: ${{ steps.sha.outputs.sha_macos_x86 }}
+          SHA_LINUX_ARM: ${{ steps.sha.outputs.sha_linux_arm }}
+          SHA_LINUX_X86: ${{ steps.sha.outputs.sha_linux_x86 }}
+        run: |
+          BASE_URL="https://github.com/nantokaworks/clix/releases/download/${TAG}"
+
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/nantokaworks/homebrew-tap.git" homebrew-tap
+          cd homebrew-tap
+          mkdir -p Formula
+
+          printf '%s\n' \
+            'class Stripex < Formula' \
+            '  desc "Multi-project Stripe CLI, powered by stripe"' \
+            '  homepage "https://github.com/nantokaworks/clix"' \
+            '  license "MIT"' \
+            '' \
+            '  livecheck do' \
+            '    url :stable' \
+            '    strategy :github_latest' \
+            '  end' \
+            '' \
+            '  on_macos do' \
+            '    on_arm do' \
+            "      url \"${BASE_URL}/stripex-v${VERSION}-aarch64-apple-darwin.tar.gz\"" \
+            "      sha256 \"${SHA_MACOS_ARM}\"" \
+            '    end' \
+            '    on_intel do' \
+            "      url \"${BASE_URL}/stripex-v${VERSION}-x86_64-apple-darwin.tar.gz\"" \
+            "      sha256 \"${SHA_MACOS_X86}\"" \
+            '    end' \
+            '  end' \
+            '' \
+            '  on_linux do' \
+            '    on_arm do' \
+            "      url \"${BASE_URL}/stripex-v${VERSION}-aarch64-unknown-linux-gnu.tar.gz\"" \
+            "      sha256 \"${SHA_LINUX_ARM}\"" \
+            '    end' \
+            '    on_intel do' \
+            "      url \"${BASE_URL}/stripex-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz\"" \
+            "      sha256 \"${SHA_LINUX_X86}\"" \
+            '    end' \
+            '  end' \
+            '' \
+            '  def install' \
+            '    bin.install "stripex"' \
+            '  end' \
+            '' \
+            '  test do' \
+            '    assert_match version.to_s, shell_output("#{bin}/stripex version 2>&1")' \
+            '  end' \
+            'end' > Formula/stripex.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/stripex.rb
+          if git diff --cached --quiet; then
+            echo "No formula changes"
+            exit 0
+          fi
+
+          git commit -m "stripex ${VERSION}"
+
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then
+              exit 0
+            fi
+            echo "push to main rejected (attempt ${attempt}); retrying"
+            sleep 5
+          done
+          echo "failed to push formula update to homebrew-tap main after retries" >&2
+          exit 1
