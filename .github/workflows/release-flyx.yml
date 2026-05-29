@@ -49,6 +49,13 @@ jobs:
         shell: bash
         run: |
           TAG="${{ github.ref_name }}"
+          case "$TAG" in
+            flyx-v*) ;;
+            *)
+              echo "::error::Release requires a 'flyx-v*' tag ref (got '$TAG'). Re-run the workflow from a flyx-v* tag, not a branch." >&2
+              exit 1
+              ;;
+          esac
           VERSION="${TAG#flyx-v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -89,6 +96,13 @@ jobs:
         id: version
         run: |
           TAG="${{ github.ref_name }}"
+          case "$TAG" in
+            flyx-v*) ;;
+            *)
+              echo "::error::Release requires a 'flyx-v*' tag ref (got '$TAG'). Re-run the workflow from a flyx-v* tag, not a branch." >&2
+              exit 1
+              ;;
+          esac
           VERSION="${TAG#flyx-v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
