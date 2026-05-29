@@ -6,6 +6,8 @@
 
 **Automatically switch Cloudflare Wrangler accounts based on the directory you're in.**
 
+> 📖 Full docs: <https://nantokaworks.github.io/clix/tools/wranglerx.html>
+
 > **Prerequisite:** `wranglerx` is a wrapper around [`wrangler`](https://developers.cloudflare.com/workers/wrangler/). Install Wrangler first, sign in with `wrangler login` for each Cloudflare account, and snapshot each session into a wranglerx profile with `wranglerx x save <profile>`.
 
 If you work across personal, work, or client Cloudflare accounts, `wranglerx` lets each project carry the account context. It snapshots the OAuth tokens from `wrangler login`, detects `account_id` from `wrangler.toml` / `wrangler.jsonc` (or falls back to the GitHub remote owner / a configured default profile), refreshes expired tokens automatically, and runs `wrangler` with the matching `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.

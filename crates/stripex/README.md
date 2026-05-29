@@ -6,6 +6,8 @@
 
 **Automatically select the right Stripe project based on the directory you're in.**
 
+> 📖 Full docs: <https://nantokaworks.github.io/clix/tools/stripex.html>
+
 > **Prerequisite:** `stripex` is a wrapper around [`stripe`](https://docs.stripe.com/stripe-cli). Install the Stripe CLI first and sign in with `stripe login` for each project you want to use.
 
 If you work across personal, work, or client Stripe projects, `stripex` lets each repository carry the project context. It detects the Git remote owner for the current directory, maps that owner to a Stripe project name, injects `-p <name>`, and delegates to `stripe`.

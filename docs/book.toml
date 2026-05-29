@@ -1,0 +1,23 @@
+[book]
+title = "clix"
+description = "Directory-aware account switchers for popular dev CLIs (ghx, flyx, wranglerx, stripex)."
+authors = ["nantokaworks"]
+language = "en"
+src = "src"
+
+[output.html]
+default-theme = "rust"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/nantokaworks/clix"
+edit-url-template = "https://github.com/nantokaworks/clix/edit/main/docs/{path}"
+# The site is served from the repo-name subpath on GitHub Pages
+# (https://nantokaworks.github.io/clix/), so asset and search URLs must
+# resolve under /clix/.
+site-url = "/clix/"
+
+[output.html.search]
+enable = true
+
+[output.html.fold]
+enable = true
+level = 1

@@ -6,6 +6,8 @@
 
 **Automatically switch `gh` accounts based on the directory you're in.**
 
+> 📖 Full docs: <https://nantokaworks.github.io/clix/tools/ghx.html>
+
 ![demo](../../.github/demo.gif)
 
 > **Prerequisite:** `ghx` is a wrapper around [`gh`](https://cli.github.com/). Log in to each account with `gh auth login` beforehand — `ghx` uses the tokens `gh` already manages.

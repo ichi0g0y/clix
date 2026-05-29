@@ -11,6 +11,16 @@ tasks:
     cmds:
       - cargo test --workspace
 
+  docs:
+    desc: ドキュメントサイトをビルド (mdBook)
+    cmds:
+      - mdbook build docs
+
+  docs:serve:
+    desc: ドキュメントサイトをローカルプレビュー (http://localhost:3000)
+    cmds:
+      - mdbook serve docs --open
+
   dev:ghx:
     desc: ghx の開発用ビルド＆実行 (引数はそのまま渡される)
     cmds:

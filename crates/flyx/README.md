@@ -5,6 +5,8 @@
 
 **Automatically switch Fly.io accounts based on the directory you're in.**
 
+> 📖 Full docs: <https://nantokaworks.github.io/clix/tools/flyx.html>
+
 > **Prerequisite:** `flyx` is a wrapper around [`fly`](https://fly.io/docs/flyctl/). Install flyctl first; `flyx` shells out to it for every operation that talks to Fly.io.
 
 If you work across personal, work, or client Fly.io organizations, `flyx` lets each project carry the account context. It snapshots your Fly tokens, reads the `app` from `fly.toml` (or the `-a` / `-o` flag), figures out which account owns it, and runs `fly` with the matching `FLY_API_TOKEN`.
