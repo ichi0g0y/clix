@@ -6,6 +6,8 @@
 
 **Automatically switch Cloudflare Wrangler accounts based on the directory you're in.**
 
+> 📖 Full docs: <https://nantokaworks.github.io/clix/tools/wranglerx.html>
+
 > **Prerequisite:** `wranglerx` is a wrapper around [`wrangler`](https://developers.cloudflare.com/workers/wrangler/). Install Wrangler first, sign in with `wrangler login` for each Cloudflare account, and snapshot each session into a wranglerx profile with `wranglerx x save <profile>`.
 
 If you work across personal, work, or client Cloudflare accounts, `wranglerx` lets each project carry the account context. It snapshots the OAuth tokens from `wrangler login`, detects `account_id` from `wrangler.toml` / `wrangler.jsonc` (or falls back to the GitHub remote owner / a configured default profile), refreshes expired tokens automatically, and runs `wrangler` with the matching `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
@@ -108,11 +110,18 @@ mappings:
 
 ## Resolution Order
 
-1. If `CLOUDFLARE_ACCOUNT_ID` is already set in the environment, `wranglerx` passes through to `wrangler` unchanged (CI workflows).
-2. Otherwise, `wranglerx` walks up from the current directory and reads top-level `account_id` from the nearest `wrangler.toml` or `wrangler.jsonc`.
-3. If no project account id is found, `wranglerx` tries the GitHub owner from `git remote get-url origin`.
-4. If neither source yields a hit, `wranglerx` falls back to the `default` profile (set via `wranglerx x use <profile>`).
-5. The trigger key is matched against `mappings`, then against each profile's `account_id` / `account_ids` for direct account-id triggers.
+`wranglerx` resolves which account to use in this order — the first match wins:
+
+1. If `CLOUDFLARE_API_TOKEN` is set in the environment, `wranglerx` passes through to `wrangler` unchanged (CI workflows). A `--account-id <id>` flag, if present, is still replayed as `CLOUDFLARE_ACCOUNT_ID`.
+2. `wranglerx --profile <name>` selects that saved profile's token directly (refresh-aware). The injected account id is the `--account-id` flag if given, otherwise the profile's primary `account_id`, otherwise whatever `wrangler` resolves on its own.
+3. A bare `CLOUDFLARE_ACCOUNT_ID` in the environment (without `--profile` / `--account-id`) passes through unchanged.
+4. A `--account-id <id>` flag becomes the trigger, overriding any `wrangler.toml`.
+5. Otherwise `wranglerx` walks up from the current directory and reads top-level `account_id` from the nearest `wrangler.toml`.
+6. Then the nearest `wrangler.jsonc`.
+7. If no project account id is found, `wranglerx` tries the GitHub owner from `git remote get-url origin`.
+8. If nothing matches, `wranglerx` falls back to the `default` profile (set via `wranglerx x use <profile>`).
+
+The resolved trigger key is matched against `mappings`, then against each profile's `account_id` / `account_ids` for direct account-id triggers.
 
 If the resolved profile's `expiration_time` is past (or within 60 seconds), `wranglerx` automatically refreshes the OAuth token using `refresh_token` and rewrites `profiles.yml` before invoking `wrangler`.
 
